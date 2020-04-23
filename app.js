@@ -103,6 +103,78 @@ app.get('/get/machine',
       })
   });
 
+app.post('/post/deleteBooking',async(req,res,next)=>{
+  const bookingToDelete = req.body;
+  delete bookingToDelete.firstBookingDate;
+  
+
+  s3.getObject({
+    Bucket:'inspekt-prod',
+    Key:'AGRILOCATION/machine_catalog',
+  },
+  (error,data)=>{
+    try{
+      const MACHINE_CATALOG = JSON.parse(data.Body.toString());
+      //console.log('MACHINE_CATALOG : ',MACHINE_CATALOG);
+      const MACHINE_CATALOG_UPDATED = MACHINE_CATALOG.map(machine=>{
+        
+        if(machine.id === bookingToDelete.idMachine){
+          /**SET THE BOOKING ARRAY BY SUBSTRACT THE BOOKING RECEIVED */
+
+          const newBookingList = machine.booking.map(booking=>{
+
+            /**COMPARE EACH key : value OF BOOKING LOOP AND bookingToDelete */
+            let isSameObject = true;
+            for(let [key,value] of Object.entries(booking)){
+
+              /**THIS FUNCTION IS NOT ABLE TO COMPARE ARRAY => DO NOT COMPARE bookingDates */
+              /**IF ONE key:value PAIR IS DIFFERENT iSameObject = false */
+              if(bookingToDelete[key] !== value && key != 'bookingDates'){
+                isSameObject = false;
+              }
+            }
+            if(isSameObject === false){           
+              return booking;
+            }else{
+              /**THE CONTRACT IS NOT DELETE BUT SET TO estimate */
+              booking.status = 'estimate';
+              return booking;
+            }
+
+          })
+
+          machine.booking = newBookingList;
+          return machine;
+
+        }else{
+          /**JUST COPY THE MACHINE WITH NO MODIFICATION */
+          return machine;
+        }
+
+      });
+
+      s3.putObject(
+        {
+          Bucket:'inspekt-prod',
+          Key:'AGRILOCATION/machine_catalog', //2 paramètres obligatoires pour toute méthode s3 (/ inplicite entre Bucket et Key)
+          Body:JSON.stringify(MACHINE_CATALOG_UPDATED) // uniquement nécessaire pour les requêtes POST
+        },
+        (error,response)=>{
+            res.status(
+              error ? 400 : 201
+            ).json(
+              {error,response}
+            )
+        }
+      )
+    }catch(error){
+      console.log('get-machine-catalog error : ',error);
+    }
+    
+  })
+
+})
+
 app.post('/post/addBooking', async(req, res, next)=>{
     
   const newBooking = req.body;
@@ -184,7 +256,7 @@ app.post('/post/addMachineImage',upload.array('filedata'),(req,res)=>{
       newCatalog.push(machine);
       
       console.log('newCatalog : ',newCatalog);
-      if(machine.brand=='undefined' || machine.brand=='' || machine.nature=='undefined' || machine.nature=='' ||machine.type=='undefined' || machine.type=='' || machine.day_price=='undefined' || machine.day_price=='' || machine.hour_price=='undefined' || machine.hour_price==''){
+      if(machine.brand=='undefined' || machine.brand=='' || machine.nature=='undefined' || machine.nature=='' ||machine.type=='undefined' || machine.type=='' || machine.day_price=='undefined' || machine.day_price=='' || machine.unit_price=='undefined' || machine.unit_price=='' || machine.unit_label=='undefined' || machine.unit_label==''){
         res.status(400).send('noData');
       }else{
         console.log('saving into database',machine.brand);
