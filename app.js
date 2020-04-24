@@ -120,30 +120,18 @@ app.post('/post/deleteBooking',async(req,res,next)=>{
         
         if(machine.id === bookingToDelete.idMachine){
           /**SET THE BOOKING ARRAY BY SUBSTRACT THE BOOKING RECEIVED */
+          console.log('machine : ',machine);
+          const newBookingList = [];
+          machine.booking.forEach(booking=>{
 
-          const newBookingList = machine.booking.map(booking=>{
-
-            /**COMPARE EACH key : value OF BOOKING LOOP AND bookingToDelete */
-            let isSameObject = true;
-            for(let [key,value] of Object.entries(booking)){
-
-              /**THIS FUNCTION IS NOT ABLE TO COMPARE ARRAY => DO NOT COMPARE bookingDates */
-              /**IF ONE key:value PAIR IS DIFFERENT iSameObject = false */
-              if(bookingToDelete[key] !== value && key != 'bookingDates'){
-                isSameObject = false;
-              }
-            }
-            if(isSameObject === false){           
-              return booking;
-            }else{
-              /**THE CONTRACT IS NOT DELETE BUT SET TO estimate */
-              booking.status = 'estimate';
-              return booking;
+            if(JSON.stringify(bookingToDelete) != JSON.stringify(booking)){
+              newBookingList.push(booking);
             }
 
           })
 
           machine.booking = newBookingList;
+          console.log('machine : ',machine);
           return machine;
 
         }else{
@@ -246,7 +234,7 @@ app.post('/post/addMachineImage',upload.array('filedata'),(req,res)=>{
 
       let machine = req.body;
       machine.id = uuid;
-      machine.status = 'active';
+      machine.visible = true;
       if(req.files[0]){
         machine.image_url = req.files[0].location;
       }else{
