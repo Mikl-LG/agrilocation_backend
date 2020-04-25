@@ -269,4 +269,10 @@ app.post('/post/addMachineImage',upload.array('filedata'),(req,res)=>{
   //res.status(200).send(req.files);
 });
 
+app.post('/post/getbookingpdf',(req,res)=>{
+  booking = req.body;
+  console.log('booking : ',booking);
+  res.status(201).send('OK');
+})
+
 app.listen(4001);
