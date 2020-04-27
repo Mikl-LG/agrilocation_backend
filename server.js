@@ -5,6 +5,7 @@ const cors = require('cors');
 const agrilocationRoutes = require('./routes/agrilocation.js');
 const multer = require('multer');
 const multerS3 = require('multer-s3');
+const pdf = require('html-pdf');
 const aws = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
 
@@ -108,6 +109,22 @@ app.get('/get/machine',
       })
   });
 
+app.post('/post/createpdf', (req,res) => {
+  console.log('req.body : ',req.body);
+  pdf.create(pdfTemplate(req.body),{}).toFile('result.pdf', (error) => {
+    if(error) {
+      res.send(Promise.reject());
+    }
+
+    res.send(Promise.resolve());
+
+  });
+});
+
+app.get('/get/fetch-pdf',(req,res) => {
+  res.sendFile(`${__dirname}/result.pdf`)
+})
+
 app.post('/post/deleteBooking',async(req,res,next)=>{
   const bookingToDelete = req.body;
   delete bookingToDelete.firstBookingDate;
@@ -145,6 +162,54 @@ app.post('/post/deleteBooking',async(req,res,next)=>{
         }
 
       });
+
+      s3.putObject(
+        {
+          Bucket:'inspekt-prod',
+          Key:'AGRILOCATION/machine_catalog', //2 paramètres obligatoires pour toute méthode s3 (/ inplicite entre Bucket et Key)
+          Body:JSON.stringify(MACHINE_CATALOG_UPDATED) // uniquement nécessaire pour les requêtes POST
+        },
+        (error,response)=>{
+            res.status(
+              error ? 400 : 201
+            ).json(
+              {error,response}
+            )
+        }
+      )
+    }catch(error){
+      console.log('get-machine-catalog error : ',error);
+    }
+    
+  })
+
+})
+
+app.post('/post/deleteMachine',async(req,res,next)=>{
+  const machineToDelete = req.body;
+  console.log('machineToDelete : ',machineToDelete);
+  //delete bookingToDelete.firstBookingDate;
+  
+
+  s3.getObject({
+    Bucket:'inspekt-prod',
+    Key:'AGRILOCATION/machine_catalog',
+  },
+  (error,data)=>{
+    try{
+      const MACHINE_CATALOG = JSON.parse(data.Body.toString());
+      //console.log('MACHINE_CATALOG : ',MACHINE_CATALOG);
+      const MACHINE_CATALOG_UPDATED = [];
+      MACHINE_CATALOG.forEach(machine=>{
+      
+        if(machine.id != machineToDelete.id){
+          console.log('machine : ',machine);
+          MACHINE_CATALOG_UPDATED.push(machine);
+
+        }
+        
+      });
+      console.log('newMachineCatalog : ',MACHINE_CATALOG_UPDATED);
 
       s3.putObject(
         {
