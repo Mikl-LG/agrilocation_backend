@@ -128,6 +128,7 @@ app.get('/get/fetch-pdf',(req,res) => {
 app.post('/post/deleteBooking',async(req,res,next)=>{
   const bookingToDelete = req.body;
   delete bookingToDelete.firstBookingDate;
+  delete bookingToDelete.lastBookingDate;
   
 
   s3.getObject({
@@ -142,18 +143,21 @@ app.post('/post/deleteBooking',async(req,res,next)=>{
         
         if(machine.id === bookingToDelete.idMachine){
           /**SET THE BOOKING ARRAY BY SUBSTRACT THE BOOKING RECEIVED */
-          console.log('machine : ',machine);
+          console.log('machine start : ',machine);
           const newBookingList = [];
           machine.booking.forEach(booking=>{
 
+            console.log('JSON.stringify(bookingToDelete) : ',JSON.stringify(bookingToDelete));
+            console.log('JSON.stringify(booking) : ',JSON.stringify(booking));
             if(JSON.stringify(bookingToDelete) != JSON.stringify(booking)){
               newBookingList.push(booking);
+              console.log('booking : ',booking);
             }
 
           })
 
           machine.booking = newBookingList;
-          console.log('machine : ',machine);
+          console.log('machine end : ',machine);
           return machine;
 
         }else{
